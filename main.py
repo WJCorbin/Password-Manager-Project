@@ -2,6 +2,7 @@ import tkinter as gui
 from tkinter import messagebox
 import random as r
 import pyperclip
+import json
 
 
 # ---------------------------- PASSWORD GENERATOR ------------------------------- #
@@ -25,9 +26,15 @@ def gen_pw():
 
 # ---------------------------- SAVE PASSWORD ------------------------------- #
 def save_pw():
+    website = website_input.get().capitalize()
     email = email_input.get()
     pw = pw_input.get()
-    website = website_input.get()
+    new_data = {
+        website: {
+            "email": email,
+            "pw": pw
+        }
+    }
 
     if len(email) == 0 or len(pw) == 0 or len(website) == 0:
         messagebox.showinfo(title="Oops", message="Please do not leave any fields empty!")
@@ -35,10 +42,35 @@ def save_pw():
         is_ok = messagebox.askokcancel(title=website, message=f"These are the details entered:\nEmail: {email}\n"
                                                               f"Password: {pw}\nIs it ok to save?")
         if is_ok:
-            with open("data.txt", "a") as data:
-                data.write(f"{website} | {email} | {pw}\n")
-            website_input.delete(0, "end")
-            pw_input.delete(0, "end")
+            try:
+                with open("data.json", "r") as data_file:
+                    data = json.load(data_file)
+            except FileNotFoundError:
+                with open("data.json", "w") as data_file:
+                    json.dump(new_data, data_file, indent=4)
+            else:
+                data.update(new_data)
+                with open("data.json", "w") as data_file:
+                    json.dump(data, data_file, indent=4)
+            finally:
+                website_input.delete(0, "end")
+                pw_input.delete(0, "end")
+
+
+# ---------------------------- SEARCH PASSWORDS ------------------------------- #
+def find_pw():
+    website = website_input.get().capitalize()
+    try:
+        with open("data.json", "r") as data_file:
+            data = json.load(data_file)
+    except FileNotFoundError:
+        messagebox.showinfo(title="Oops", message="No Passwords stored yet")
+    else:
+        if website in data:
+            messagebox.showinfo(title=website, message=f"Email / Username: {data[website]['email']}\n"
+                                                       f"Password: {data[website]['pw']}")
+        else:
+            messagebox.showinfo(title=website, message="No details for that website or app exist")
 
 
 # ---------------------------- UI ------------------------------- #
@@ -55,9 +87,12 @@ canvas.grid(column=1, row=0)
 website_label = gui.Label(text="Website:")
 website_label.grid(column=0, row=1)
 
-website_input = gui.Entry(width=53)
-website_input.grid(column=1, row=1, columnspan=2)
+website_input = gui.Entry(width=35)
+website_input.grid(column=1, row=1)
 website_input.focus()
+
+search_button = gui.Button(text="Search", width=14, command=find_pw)
+search_button.grid(column=2, row=1)
 
 email_label = gui.Label(text="Email/Username:")
 email_label.grid(column=0, row=2)
